@@ -1,0 +1,59 @@
+parameters:
+- name: stage
+  default: Build
+- name: displayName
+  default: Deploy Build
+- name: executeBuild
+  default: true
+- name: targetCredentials
+  default: ''
+- name: pipelineParameters
+  default: ''
+  
+stages:
+  - ${{if eq(parameters.executeBuild, true)}}:
+    - stage: Build
+      pool: $(AGENT_POOL)
+      displayName: ${{parameters.displayName}} 
+      jobs:
+      - job: Build
+        variables:
+        - group: ${{parameters.targetCredentials}}
+        - group: ${{parameters.pipelineParameters}}
+        - group: redgate_global_vars
+        steps:
+          
+          - script: '$(FLYWAY) clean info -url="$(target_database_JDBC)"'
+            failOnStderr: true
+            displayName: 'Clean Build DB'
+            env:
+              FLYWAY_CLEAN_DISABLED: false
+
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Invoke-Sqlcmd -ServerInstance "REDGATE-DEMO\SQLEXPRESS" -Database "Westwind_Build" -Query "ALTER DATABASE Westwind_Build SET TRUSTWORTHY ON"
+            
+
+
+          - script: '$(FLYWAY) migrate info -url="$(target_database_JDBC)" -placeholders.environment=build'
+            failOnStderr: true
+            displayName: 'Validate Migrate Scripts'
+          
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Invoke-Sqlcmd -ServerInstance "REDGATE-DEMO\SQLEXPRESS" -Database "Westwind_Build" -Query "BEGIN TRY EXEC tSQLt.RunAll END TRY BEGIN CATCH END CATCH; EXEC tSQLt.XmlResultFormatter" -MaxCharLength 1000000 | %{ $out = $out + $_[0]}; $out > "C:\agent\_work\5\s\TestResults\DatabaseTestResults.junit.xml"
+               
+                #Invoke-Sqlcmd -ServerInstance "REDGATE-DEMO\SQLEXPRESS" -Database "Westwind_Test" -Query "BEGIN TRY EXEC tSQLt.RunAll END TRY BEGIN CATCH END CATCH; EXEC tSQLt.XmlResultFormatter" | Out-File -FilePath "C:\agent\_work\5\s\TestResults\DatabaseTestResults.junit.xml"
+                Write-Host "##vso[results.publish type=JUnit;resultFiles="C:\agent\_work\5\s\TestResults\DatabaseTestResults.junit.xml";]"
+
+                ### End of Automatic Migration Script Creation ###
+            displayName: 'Run tSQLt Tests'
+          
+
+          - script: '$(FLYWAY) undo info -url="$(target_database_JDBC)" -target="$(FIRST_UNDO_SCRIPT)"?'
+            continueOnError: true
+            displayName: 'Validate Undo Scripts'

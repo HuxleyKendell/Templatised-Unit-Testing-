@@ -1,0 +1,62 @@
+{
+  "version": "2.0",
+  "name": "Tundra",
+  "id": "932f8185-9765-415a-a4cb-f63c733850ae",
+  "databaseType": "SqlServer",
+  "development": {
+    "scriptsFolder": "./schema-model"
+  },
+  "deployment": {
+    "flywayConfFiles": [
+      "./flyway.conf"
+    ],
+    "targetDatabases": [
+      {
+        "connectionProvider": {
+          "type": "UsernamePassword",
+          "url": "jdbc:sqlserver://localhost;databaseName=Westwind;encrypt=true;integratedSecurity=true;trustServerCertificate=true"
+        },
+        "displayName": "Westwind_Prod"
+      },
+      {
+        "connectionProvider": {
+          "type": "UsernamePassword",
+          "url": "jdbc:sqlserver://localhost;databaseName=Westwind_Test;encrypt=true;integratedSecurity=true;trustServerCertificate=true"
+        },
+        "displayName": "Westwind_Test"
+      },
+      {
+        "connectionProvider": {
+          "type": "UsernamePassword",
+          "url": "jdbc:sqlserver://localhost;databaseName=Westwind_Build;encrypt=true;integratedSecurity=true;trustServerCertificate=true"
+        }
+      }
+    ],
+    "generateUndoScripts": true
+  },
+  "schemas": [],
+  "capabilities": {
+    "staticData": {
+      "configuredTables": [
+        {
+          "schema": "dbo",
+          "table": "Orders",
+          "excludedColumns": [
+            "CustomerID",
+            "EmployeeID",
+            "OrderDate",
+            "RequiredDate",
+            "ShippedDate",
+            "ShipVia",
+            "ShipName",
+            "ShipAddress",
+            "ShipCity",
+            "ShipRegion",
+            "ShipPostalCode",
+            "ShipCountry"
+          ]
+        }
+      ]
+    }
+  }
+}

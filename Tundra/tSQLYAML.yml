@@ -1,0 +1,53 @@
+name: ADO-self-hosted-pipeline-templatized
+ 
+# trigger: none
+trigger: none
+  #branches:
+    #include:
+     # - master
+  #paths:
+    #include:
+      #- migrations/*
+
+# Move the templates to their own repository for greater control and lack of repitition across projects (DRY)
+# They can be included in the same repository if preferred: templates/vars.yml would work for the file below
+resources:
+  repositories:
+    - repository: template
+      type: git
+      name: template
+
+variables:
+- template: csv-vars.yml@template                       # templates/vars.yml if kept in same repository
+
+stages:
+
+- template: build.yml@template                     # templates/build.yml if kept in same repository
+  parameters:
+    stage: Build
+    displayName: Deploy Build
+    executeBuild: true
+    targetCredentials: build_credentials_variable_group
+    pipelineParameters: flyway_vars
+
+- template: deploy.yml@template                        # templates/deploy.yml if kept in same repository
+  parameters:
+    dependsOn: Build
+    stage: Test
+    displayName: Deploy Test
+    generateDriftAndChangeReport: true                  # optional flag, defaults to false           
+    staticCodeAnalysis: true                            # optional flag, defaults to false            
+    targetCredentials: Westwind_test_credentials
+    pipelineParameters: flyway_vars
+
+- template: deploy.yml@template                        # templates/deploy.yml if kept in same repository
+  parameters:
+    stage: Prod
+    dependsOn: Test
+    pauseForCodeReview: true                            # optional flag, defaults to false
+    failReleaseIfDriftDetected: true                    # optional flag, defaults to false
+    generateDriftAndChangeReport: true                  # optional flag, defaults to false           
+    staticCodeAnalysis: true                            # optional flag, defaults to false 
+    displayName: Deploy Prod
+    targetCredentials: Westwind_prod_credentials
+    pipelineParameters: flyway_vars
